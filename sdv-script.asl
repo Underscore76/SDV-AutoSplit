@@ -4,6 +4,7 @@ state("Stardew Valley")
 }
 init
 {
+	vars.aslName = "StardewValley";
 	// pulled from: https://raw.githubusercontent.com/PrototypeAlpha/AmnesiaASL/master/AmnesiaTDD.asl
 	if(timer.CurrentTimingMethod == TimingMethod.RealTime)
 	{		
