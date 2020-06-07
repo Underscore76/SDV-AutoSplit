@@ -2,6 +2,25 @@ state("Stardew Valley")
 {
 	
 }
+startup 
+{
+	vars.IsTitleMenu = (Func<Process, IntPtr, bool>)((mem, menu_address) =>
+	{
+		IntPtr menu = (IntPtr)mem.ReadValue<int>((IntPtr)menu_address);
+		if (menu != IntPtr.Zero)
+		{
+			IntPtr vtable = (IntPtr)mem.ReadValue<int>(menu);
+			uint startupMessageColor = mem.ReadValue<uint>(menu+0xEC);
+			int menu_size = mem.ReadValue<int>(vtable + 0x4);
+			// the startup menu uses a deepskyblue which is ultra specific/unchanging.
+			if (menu_size == 244 && startupMessageColor == 4294950656)
+			{
+				return true;
+			}
+		}
+		return false;
+	});
+}
 init
 {
 	vars.aslName = "StardewValley";
@@ -74,28 +93,21 @@ init
 	vars.isSaving = false;
 	vars.newDayTask = 0;
 	vars.loading = false;
+	print("MenuPtr: " + vars.Game1_activeClickableMenu.ToString("X"));
+	vars.startupTitleMenu = vars.IsTitleMenu(memory, vars.Game1_activeClickableMenu);
 }
 
 update
 {
 	vars.isSaving = memory.ReadValue<bool>((IntPtr)vars.Game1_isSaving);
 	vars.newDayTask = memory.ReadValue<int>((IntPtr)vars.Game1_newDayTask);
-	IntPtr menu = (IntPtr)memory.ReadValue<int>((IntPtr)vars.Game1_activeClickableMenu);
-	bool menuIsTitle = false;
-	if (menu != IntPtr.Zero)
+	if (!timer.IsGameTimeInitialized)
 	{
-		IntPtr vtable = (IntPtr)memory.ReadValue<int>(menu);
-		uint startupMessageColor = memory.ReadValue<uint>(menu+0xEC);
-		int menu_size = memory.ReadValue<int>(vtable + 0x4);
-		// the startup menu uses a deepskyblue which is ultra specific/unchanging.
-		if (menu_size == 244 && startupMessageColor == 4294950656)
-		{
-			menuIsTitle = true;
-		}
-	}	
+		vars.startupTitleMenu = vars.IsTitleMenu(memory, vars.Game1_activeClickableMenu);
+	}
+	vars.startupTitleMenu &= vars.IsTitleMenu(memory, vars.Game1_activeClickableMenu);
 	
-	vars.loading = menuIsTitle || vars.isSaving || (vars.newDayTask != 0);
-	//print("LS_DEBUG:" + vars.isSaving.ToString() + ":" + vars.newDayTask.ToString() + "->" + vars.loading.ToString());
+	vars.loading = vars.startupTitleMenu || vars.isSaving || (vars.newDayTask != 0);
 }
 
 isLoading
